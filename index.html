@@ -69,9 +69,10 @@
         <div>
           <p>
             Cała infrastruktura stoi na wirtualnej maszynie AlmaLinux 9, uruchomionej
-            na QNAP TS-264 przez Virtualization Station. Sześć ról Ansible — DNS
-            z blokowaniem reklam, reverse proxy z automatycznym TLS, monitoring,
-            menedżer haseł, dashboard usług i ta strona — są spięte wspólną siecią
+            na QNAP TS-264 przez Virtualization Station. Osiem ról Ansible — Docker,
+            DNS z blokowaniem reklam (Blocky), ta strona, reverse proxy z automatycznym
+            TLS (Caddy), monitoring, menedżer haseł (Vaultwarden), dashboard usług
+            (Homepage) i zero-trust tunnel (cloudflared) — są spięte wspólną siecią
             Docker i wdrażane jednym poleceniem. Każda zmiana przechodzi ten sam
             proces co w firmie: osobny branch, pull request, automatyczny lint
             i syntax-check w GitHub Actions, Vagrant, dopiero potem wdrożenie na żywy system.
@@ -96,12 +97,26 @@
 
     <section id="dowody" class="section wrap">
       <p class="eyebrow">Dowody, nie deklaracje</p>
-      <h2>Trzy razy, gdy coś się zepsuło</h2>
+      <h2>Cztery razy, gdy coś się zepsuło</h2>
       <p class="section-intro">
         Homelab jako kontenery nie eliminuje awarii — zamienia jedną kategorię problemów
-        na inną. Poniżej trzy, które faktycznie wystąpiły i zostały zdiagnozowane od zera.
+        na inną. Poniżej cztery, które faktycznie wystąpiły i zostały zdiagnozowane od zera.
       </p>
       <ul class="incident-list">
+        <li class="incident">
+          <p class="incident-status"><span class="dot dot-ok"></span>incident-node-exporter-netns.log <span class="term-muted">RESOLVED</span></p>
+          <p class="incident-title">node_exporter i namespace sieciowy kontenera</p>
+          <p class="incident-desc">
+            node_exporter uruchomiony bez <code>network_mode: host</code> widzi tylko
+            interfejsy sieciowe własnego namespace'u kontenera, nie hosta — zamontowanie
+            <code>/proc</code> z <code>--path.procfs</code> tego nie naprawia, bo
+            <code>/proc/net</code> jest per-namespace, a nie per-mount. Zdiagnozowane
+            empirycznie: porównanie metryk z zawartością <code>/proc/net/dev</code>
+            bezpośrednio na hoście. Zamiast zostawić w Grafanie panel sieciowy pokazujący
+            nieprawdziwe dane, został on usunięty z dashboardu — metryki CPU, RAM
+            i dysku pozostają dokładne i widoczne.
+          </p>
+        </li>
         <li class="incident">
           <p class="incident-status"><span class="dot dot-ok"></span>incident-cadvisor.log <span class="term-muted">RESOLVED</span></p>
           <p class="incident-title">cAdvisor a containerd snapshotter</p>
