@@ -2,9 +2,237 @@
 <html lang="pl">
 <head>
   <meta charset="UTF-8">
-  <title>Krzysztof Kaletka</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Krzysztof Kaletka — Junior Linux / Infrastructure</title>
+  <meta name="description" content="Homelab zbudowany i utrzymywany jako Infrastructure as Code — Ansible, Docker, Cloudflare Tunnel, monitoring jako kod.">
+  <link rel="stylesheet" href="style.css">
 </head>
 <body>
-  <h1>W budowie</h1>
+
+  <header class="site-header">
+    <div class="wrap header-row">
+      <a href="#top" class="wordmark">kaletkadev</a>
+      <nav class="site-nav" aria-label="Nawigacja główna">
+        <a href="#homelab">Homelab</a>
+        <a href="#dowody">Dowody</a>
+        <a href="#monitoring">Monitoring</a>
+        <a href="#kontakt">Kontakt</a>
+      </nav>
+      <a class="btn btn-ghost btn-small" href="cv.pdf" download>Pobierz CV</a>
+    </div>
+  </header>
+
+  <main id="top">
+
+
+    <section class="hero wrap">
+      <div class="hero-copy">
+        <p class="eyebrow">Portfolio — Infrastructure</p>
+        <h1>Krzysztof Kaletka</h1>
+        <p class="role">Junior Linux / Infrastructure</p>
+        <p class="lede">
+          Ten projekt to mój prywatny serwer (homelab) — komputer, na którym samodzielnie
+          zbudowałem i utrzymuję działającą infrastrukturę: własny serwer DNS blokujący
+          reklamy, bezpieczny dostęp z internetu bez otwierania portów, menedżer haseł,
+          system monitorujący stan serwera na żywo. Całość opisana jako kod — mogę odtworzyć
+          wszystko od zera jednym poleceniem, a każda zmiana przechodzi ten sam proces co
+          w firmie: branch, przegląd kodu, automatyczne testy, dopiero wdrożenie.
+        </p>
+        <div class="cta-row">
+          <a class="btn btn-primary" href="cv.pdf" download>Pobierz CV</a>
+          <a class="btn btn-ghost" href="https://github.com/KrzysztofKaletkaDev/ansible-homelab-template">
+            Kod na GitHub
+          </a>
+        </div>
+      </div>
+
+      <div class="term" role="img" aria-label="Status usług homelabu, wszystkie aktywne">
+        <div class="term-bar">kris@alma-server:~$ systemctl status homelab</div>
+        <ul class="term-body">
+          <li><span class="dot dot-ok"></span>blocky <span class="term-muted">— DNS + ad-blocking</span></li>
+          <li><span class="dot dot-ok"></span>caddy <span class="term-muted">— reverse proxy + TLS</span></li>
+          <li><span class="dot dot-ok"></span>cloudflared <span class="term-muted">— zero-trust tunnel</span></li>
+          <li><span class="dot dot-ok"></span>monitoring <span class="term-muted">— Prometheus + Grafana</span></li>
+          <li><span class="dot dot-ok"></span>vaultwarden<span class="term-muted">— password manager</span></li>
+          <li><span class="dot dot-ok"></span>portfolio <span class="term-muted">— ta strona</span></li>
+          <li><span class="dot dot-ok"></span>homepage <span class="term-muted">— główny pulpit</span></li>
+          <li class="term-cursor" aria-hidden="true"><span class="dot dot-ok"></span>7 active<span class="cursor">_</span></li>
+        </ul>
+      </div>
+    </section>
+
+
+    <section id="homelab" class="section wrap">
+      <p class="eyebrow">Homelab jako projekt</p>
+      <h2>Zbudowane jako kod, nie jako notatka</h2>
+      <div class="section-grid">
+        <div>
+          <p>
+            Cała infrastruktura stoi na wirtualnej maszynie AlmaLinux 9, uruchomionej
+            na QNAP TS-264 przez Virtualization Station. Sześć ról Ansible — DNS
+            z blokowaniem reklam, reverse proxy z automatycznym TLS, monitoring,
+            menedżer haseł, dashboard usług i ta strona — są spięte wspólną siecią
+            Docker i wdrażane jednym poleceniem. Każda zmiana przechodzi ten sam
+            proces co w firmie: osobny branch, pull request, automatyczny lint
+            i syntax-check w GitHub Actions, Vagrant, dopiero potem wdrożenie na żywy system.
+          </p>
+          <ul class="tag-list" aria-label="Stos technologiczny">
+            <li>Ansible</li><li>Docker</li><li>Caddy</li><li>Cloudflare Tunnel</li>
+            <li>Prometheus</li><li>Grafana</li><li>GitHub Actions</li>
+          </ul>
+          <a class="btn btn-ghost" href="https://github.com/KrzysztofKaletkaDev/ansible-homelab-template">
+            Zobacz kod →
+          </a>
+        </div>
+        <button type="button" class="image-trigger"
+                data-lightbox-src="images/architecture-diagram.png"
+                data-lightbox-alt="Diagram architektury: QNAP TS-264 z VM AlmaLinux 9, role Ansible (Blocky, Caddy, monitoring, Vaultwarden, Homepage, cloudflared) spięte siecią Docker caddy-ingress">
+          <img class="diagram-image" src="images/architecture-diagram.png"
+               alt="Diagram architektury: QNAP TS-264 z VM AlmaLinux 9, role Ansible (Blocky, Caddy, monitoring, Vaultwarden, Homepage, cloudflared) spięte siecią Docker caddy-ingress">
+        </button>
+      </div>
+    </section>
+
+
+    <section id="dowody" class="section wrap">
+      <p class="eyebrow">Dowody, nie deklaracje</p>
+      <h2>Trzy razy, gdy coś się zepsuło</h2>
+      <p class="section-intro">
+        Homelab jako kontenery nie eliminuje awarii — zamienia jedną kategorię problemów
+        na inną. Poniżej trzy, które faktycznie wystąpiły i zostały zdiagnozowane od zera.
+      </p>
+      <ul class="incident-list">
+        <li class="incident">
+          <p class="incident-status"><span class="dot dot-ok"></span>incident-cadvisor.log <span class="term-muted">RESOLVED</span></p>
+          <p class="incident-title">cAdvisor a containerd snapshotter</p>
+          <p class="incident-desc">
+            cAdvisor poniżej wersji v0.54.0 nie rozumiał sposobu przechowywania warstw
+            kontenerów w containerd-snapshotterze — kontener startował, ale nie widział
+            żadnych innych kontenerów do monitorowania. Do tego rejestr obrazu zmienił
+            się z <code>gcr.io</code> na <code>ghcr.io</code> przy wersji v0.53.0, więc
+            sama zmiana tagu bez zmiany rejestru kończyła się błędem pobierania. Wersja
+            i rejestr są dziś przypięte na stałe w kodzie, z komentarzem tłumaczącym
+            dlaczego.
+          </p>
+        </li>
+        <li class="incident">
+          <p class="incident-status"><span class="dot dot-ok"></span>incident-caddy-image.log <span class="term-muted">RESOLVED</span></p>
+          <p class="incident-title">Osierocony obraz Caddy po rebuildzie</p>
+          <p class="incident-desc">
+            Przebudowa obrazu Caddy pod tym samym tagiem zostawia działający kontener
+            wskazującym na już nieistniejący sha — Docker Compose wywala się wtedy
+            błędem „No such image" przy najbliższej próbie odświeżenia. Zwykły restart
+            nic nie naprawia, bo kontener nie jest odtwarzany, tylko zatrzymywany
+            i uruchamiany ponownie z tą samą, nieaktualną referencją. Naprawa to pełne
+            <code>docker compose down && up</code>.
+          </p>
+        </li>
+        <li class="incident">
+          <p class="incident-status"><span class="dot dot-ok"></span>incident-cloudflared-mount.log <span class="term-muted">RESOLVED</span></p>
+          <p class="incident-title">Bind mount, inode i cichy fail configu</p>
+          <p class="incident-desc">
+            Plik zamontowany do kontenera pojedynczo, nie jako cały katalog, wiąże się
+            z konkretnym inode'em w momencie startu kontenera. Edytor, który zapisuje
+            przez utworzenie nowego pliku i podmianę — a większość, łącznie z nano
+            i sed, tak właśnie robi — tworzy nowy inode. Kontener dalej czyta stary,
+            osierocony plik, mimo że na dysku widać już nową treść. Jak przy poprzednim
+            incydencie: dopiero pełne odtworzenie kontenera, nie sam restart,
+            rozwiązuje problem.
+          </p>
+        </li>
+      </ul>
+    </section>
+
+
+    <section id="monitoring" class="section wrap">
+      <p class="eyebrow">Monitoring</p>
+      <h2>Metryki</h2>
+      <div class="section-grid">
+        <div>
+          <p>
+            Prometheus, node_exporter, cAdvisor i Grafana — dashboardy provisionowane
+            w całości jako kod (<code>allowUiUpdates: false</code>), nie klikane ręcznie
+            w interfejsie. Definicje paneli JSON żyją w repozytorium jako jedyne źródło
+            prawdy.
+          </p>
+          <a class="btn btn-ghost" href="https://github.com/KrzysztofKaletkaDev/ansible-homelab-template/tree/main/roles/monitoring">
+            Zobacz kod monitoringu →
+          </a>
+        </div>
+          <button type="button" class="image-trigger"
+                data-lightbox-src="images/grafana-dashboard.png"
+                data-lightbox-alt="Dashboard Grafany z metrykami CPU, pamięci i dysku hosta z node_exportera">
+          <img class="diagram-image" src="images/grafana-dashboard.png"
+               alt="Dashboard Grafany z metrykami CPU, pamięci i dysku hosta z node_exportera">
+        </button>
+      </div>
+    </section>
+
+
+    <section id="ta-strona" class="section wrap section-narrow">
+      <p class="eyebrow">Ta strona</p>
+      <h2>Ta strona jako dowód</h2>
+      <p>
+        To, co właśnie oglądasz, jest hostowane na tej samej infrastrukturze opisanej
+        wyżej — bez otwartych portów, przez Cloudflare Tunnel, serwowane bezpośrednio
+        przez Caddy. Sama treść to osobne, publiczne repozytorium.
+      </p>
+      <a class="btn btn-ghost" href="https://github.com/KrzysztofKaletkaDev/kaletkadev-portfolio-site">
+        kaletkadev-portfolio-site →
+      </a>
+    </section>
+
+    <section id="kontakt" class="section wrap section-narrow">
+      <p class="eyebrow">Kontakt</p>
+      <h2>Porozmawiajmy</h2>
+      <div class="contact-row">
+        <a class="btn btn-primary" href="mailto:kontakt@kaletkadev.com">krzysztof@kaletkadev.com</a>
+        <a class="btn btn-ghost" href="cv.pdf" download>Pobierz CV</a>
+        <a class="btn btn-ghost" href="https://github.com/KrzysztofKaletkaDev">GitHub</a>
+      </div>
+    </section>
+
+  </main>
+
+  <footer class="site-footer">
+    <div class="wrap">
+      <p class="term-muted">
+        kaletkadev.com © 2026
+      </p>
+    </div>
+  </footer>
+   <dialog id="lightbox" class="lightbox">
+    <button type="button" class="lightbox-close" aria-label="Zamknij powiększenie">✕</button>
+    <img id="lightbox-img" src="" alt="">
+  </dialog>
+ 
+  <script>
+    (function () {
+      var lightbox = document.getElementById('lightbox');
+      var lightboxImg = document.getElementById('lightbox-img');
+ 
+      document.querySelectorAll('.image-trigger').forEach(function (trigger) {
+        trigger.addEventListener('click', function () {
+          lightboxImg.src = trigger.dataset.lightboxSrc;
+          lightboxImg.alt = trigger.dataset.lightboxAlt;
+          lightbox.showModal();
+        });
+      });
+ 
+      document.querySelector('.lightbox-close').addEventListener('click', function () {
+        lightbox.close();
+      });
+ 
+      lightbox.addEventListener('click', function (e) {
+        if (e.target === lightbox) {
+          lightbox.close();
+        }
+      });
+ 
+      lightbox.addEventListener('close', function () {
+        lightboxImg.src = '';
+      });
+    })();
+  </script>
 </body>
 </html>
