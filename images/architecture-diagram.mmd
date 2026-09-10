@@ -1,5 +1,5 @@
 %% render: docker run --rm -u "$(id -u):$(id -g)" -v "$PWD:/data" minlag/mermaid-cli \
-%%   -i images/architecture-diagram.mmd -o images/architecture-diagram.png -b '#14161b' -w 1600
+%%   -i images/architecture-diagram.mmd -o images/architecture-diagram.png -b '#14161b' -w 1600 -s 2
 %%{init: {'theme':'dark'}}%%
 graph TD
     NET([Internet / ONT]) -->|"PPPoE on tagged VLAN 35 · MTU 1492"| RB
