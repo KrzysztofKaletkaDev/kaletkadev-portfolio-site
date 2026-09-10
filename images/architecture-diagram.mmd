@@ -1,0 +1,22 @@
+%%{init: {'theme':'dark'}}%%
+graph TD
+    NET([Internet / ONT]) -->|"PPPoE on tagged VLAN 35 · MTU 1492"| RB
+    VPN([Remote devices]) -.->|"WireGuard 443/udp"| RB
+
+    subgraph NETLAYER ["Network layer — ansible-network-template"]
+        RB["<b>RB5009</b> edge router<br/>NAT · firewall · WireGuard<br/>:53 redirected, DoT/DoH blocked"]
+        SW["<b>CRS310</b> switch<br/>VLAN table mirrored from the router"]
+        RB ===|"trunk · VLAN 1 (main) + VLAN 20 (servers) tagged"| SW
+    end
+
+    RB -->|"VLAN main · untagged access ports"| CLI([LAN and Wi-Fi clients])
+    SW -->|"VLAN main · untagged<br/>no access to servers by default"| CLI
+    SW -->|"VLAN servers · untagged"| QNAP
+
+    subgraph SVCLAYER ["Service layer — ansible-homelab-template"]
+        QNAP["<b>QNAP NAS</b> · QTS"] --> VM["<b>AlmaLinux 9</b> VM · Docker"]
+        VM --> SVC["Caddy · Blocky DNS · Vaultwarden<br/>Homepage · Prometheus + Grafana<br/>static site on Caddy's file_server"]
+    end
+
+    RB -.->|"forwards :53 to the ad-blocking resolver"| SVC
+    SVC -.->|"outbound tunnel · no inbound port"| CF([Cloudflare edge]) --> SITE([kaletkadev.com])
