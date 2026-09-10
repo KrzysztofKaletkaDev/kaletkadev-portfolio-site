@@ -512,3 +512,26 @@ h3 {
   .layer-grid { grid-template-columns: 1fr; }
   .header-actions { gap: 8px; }
 }
+
+@media (max-width: 800px) {
+  .site-nav {
+    flex-wrap: wrap;
+    justify-content: flex-start;
+    column-gap: 16px;
+    row-gap: 8px;
+  }
+}
+
+@media (max-width: 640px) {
+  /* tabela decyzji układa się w bloki — bez poziomego scrolla */
+  .adr-table { min-width: 0; }
+  .adr-table thead { display: none; }
+  .adr-table, .adr-table tbody, .adr-table tr,
+  .adr-table th, .adr-table td { display: block; }
+  .adr-table tr {
+    padding: 18px 0;
+    border-bottom: 0.5px solid var(--border);
+  }
+  .adr-table th, .adr-table td { border: 0; padding: 0; }
+  .adr-table tbody th { width: auto; margin-bottom: 8px; }
+}
