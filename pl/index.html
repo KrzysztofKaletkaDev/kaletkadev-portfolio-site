@@ -1,0 +1,473 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Krzysztof Kaletka — Linux / Infrastructure</title>
+  <meta name="description" content="Dwie warstwy domowej infrastruktury zarządzane jako kod — sieć na MikroTiku i skonteneryzowany stos usług — oraz awarie, które je ukształtowały.">
+  <link rel="icon" type="image/svg+xml" href="/images/favicon.svg">
+
+  <link rel="alternate" hreflang="en" href="https://kaletkadev.com/">
+  <link rel="alternate" hreflang="pl" href="https://kaletkadev.com/pl/">
+  <link rel="alternate" hreflang="x-default" href="https://kaletkadev.com/">
+
+  <meta property="og:type" content="website">
+  <meta property="og:title" content="Krzysztof Kaletka — Linux / Infrastructure">
+  <meta property="og:description" content="Dwie warstwy domowej infrastruktury zarządzane jako kod — i awarie, które je ukształtowały.">
+  <meta property="og:url" content="https://kaletkadev.com/pl/">
+  <meta property="og:image" content="https://kaletkadev.com/images/architecture-diagram.png">
+  <meta name="twitter:card" content="summary_large_image">
+
+  <link rel="stylesheet" href="/style.css">
+</head>
+<body>
+
+  <header class="site-header">
+    <div class="wrap header-row">
+      <a href="#top" class="wordmark">kaletkadev</a>
+      <nav class="site-nav" aria-label="Nawigacja główna">
+        <a href="#system">System</a>
+        <a href="#awarie">Awarie</a>
+        <a href="#decyzje">Decyzje</a>
+        <a href="#praktyka">Praktyka</a>
+        <a href="#kontakt">Kontakt</a>
+      </nav>
+      <div class="header-actions">
+        <a class="lang-switch" href="/" hreflang="en" lang="en">EN</a>
+        <a class="btn btn-ghost btn-small" href="/cv.pdf" download>CV</a>
+      </div>
+    </div>
+  </header>
+
+  <main id="top">
+
+    <section class="hero wrap">
+      <div class="hero-copy">
+        <h1>Krzysztof Kaletka</h1>
+        <p class="role">Junior Linux / Infrastructure Engineer</p>
+        <p class="lede">
+          Utrzymuję dwie warstwy domowej infrastruktury jako kod: sieć na MikroTiku,
+          która przenosi ruch, i skonteneryzowany stos usług, który na niej stoi. Obie
+          odtwarzają się od pustego urządzenia. Większość tego, co niżej, to rzeczy,
+          które się zepsuły — siedem awarii, sposób diagnozy każdej z nich i decyzja,
+          którą każda wymusiła.
+        </p>
+        <div class="cta-row">
+          <a class="btn btn-primary" href="#awarie">Przeczytaj o awariach</a>
+          <a class="btn btn-ghost" href="/cv.pdf" download>Pobierz CV</a>
+        </div>
+      </div>
+
+      <div class="stack" role="img" aria-label="Diagram: warstwa sieciowa na MikroTik RouterOS niosąca warstwę usług na AlmaLinuksie i Dockerze, trzymane w dwóch osobnych repozytoriach">
+        <p class="stack-label">Jeden system, dwa repozytoria</p>
+        <div class="stack-layer">
+          <p class="stack-layer-name">Warstwa usług</p>
+          <p class="stack-layer-body">VM AlmaLinux 9 · Docker · Caddy · Vaultwarden · Prometheus + Grafana</p>
+        </div>
+        <p class="stack-rest" aria-hidden="true">stoi na</p>
+        <div class="stack-layer">
+          <p class="stack-layer-name">Warstwa sieciowa</p>
+          <p class="stack-layer-body">RB5009 + CRS310 · API RouterOS · mostek z filtrowaniem VLAN · firewall · WireGuard</p>
+        </div>
+        <p class="stack-note">Rozdzielone świadomie — inny zasięg awarii, inny cykl życia.</p>
+      </div>
+    </section>
+
+    <section id="system" class="section wrap">
+      <h2>System</h2>
+      <p class="section-intro">
+        Obie połowy to osobne repozytoria i jest to decyzja, nie przypadek. Zmiana
+        w firewallu potrafi odciąć od sieci cały dom; podbicie wersji obrazu kontenera
+        nie. Inny zasięg awarii, inny sposób testowania, inne tempo wydań — więc nie
+        dzielą repozytorium ani jednego przebiegu.
+      </p>
+
+      <div class="layer-grid">
+        <article class="layer-card">
+          <p class="layer-badge badge-network">Warstwa sieciowa</p>
+          <h3>ansible-network-template</h3>
+          <p>
+            Dwa urządzenia MikroTik konfigurowane w całości przez API RouterOS — bez SSH
+            do konfiguracji. Uplink PPPoE na tagowanym VLAN-ie, mostek z filtrowaniem
+            VLAN rozdzielony na <code>main</code> i <code>servers</code>, lustrzana
+            tablica VLAN na switchu, DHCP i DNS dla obu segmentów, serwer WireGuard dla
+            zdalnego dostępu oraz firewall, który przechwytuje nieszyfrowany DNS, blokuje
+            obejście przez DoT/DoH i pilnuje granicy między segmentami.
+          </p>
+          <p class="layer-meta">6 ról · 10 ADR-ów · próba na jednorazowej maszynie RouterOS CHR przed sprzętem</p>
+          <div class="evidence-links">
+            <a href="https://github.com/KrzysztofKaletkaDev/ansible-network-template">Repozytorium</a>
+            <a href="https://github.com/KrzysztofKaletkaDev/ansible-network-template/tree/main/docs/adr">Zapisy decyzji</a>
+            <a href="https://github.com/KrzysztofKaletkaDev/ansible-network-template/tree/main/roles/routeros_firewall">Rola firewalla</a>
+          </div>
+        </article>
+
+        <article class="layer-card">
+          <p class="layer-badge badge-services">Warstwa usług</p>
+          <h3>ansible-homelab-template</h3>
+          <p>
+            Osiem ról Ansible wdrażających skonteneryzowany stos na maszynie AlmaLinux 9:
+            resolwer DNS z blokowaniem reklam, reverse proxy Caddy budowane przez
+            <code>xcaddy</code> pod certyfikaty wildcard przez ACME DNS-01, menedżer
+            haseł, dashboard usług, stos Prometheus i Grafana z dashboardami
+            provisionowanymi jako kod, ta strona oraz Cloudflare Tunnel wystawiający
+            domenę bez ani jednego otwartego portu przychodzącego.
+          </p>
+          <p class="layer-meta">8 ról · 10 ADR-ów · próba na maszynie Vagrant przed produkcją</p>
+          <div class="evidence-links">
+            <a href="https://github.com/KrzysztofKaletkaDev/ansible-homelab-template">Repozytorium</a>
+            <a href="https://github.com/KrzysztofKaletkaDev/ansible-homelab-template/tree/main/docs/adr">Zapisy decyzji</a>
+            <a href="https://github.com/KrzysztofKaletkaDev/ansible-homelab-template/tree/main/roles/monitoring">Rola monitoringu</a>
+          </div>
+        </article>
+      </div>
+
+      <button type="button" class="image-trigger"
+              data-lightbox-src="/images/architecture-diagram.png"
+              data-lightbox-alt="Dwuwarstwowy diagram architektury: router brzegowy MikroTik RB5009 i switch CRS310 z VLAN-ami sieci głównej i serwerowej tagowanymi na trunku, gdzie router przechwytuje zwykły DNS i blokuje DoT/DoH; za nimi QNAP NAS z maszyną AlmaLinux 9 na Dockerze — Caddy, Blocky DNS, Vaultwarden, Homepage oraz Prometheus z Grafaną — publikowane przez wychodzący tunel Cloudflare">
+        <img class="diagram-image" src="/images/architecture-diagram.png"
+             alt="Dwuwarstwowy diagram architektury: router brzegowy MikroTik RB5009 i switch CRS310 z VLAN-ami sieci głównej i serwerowej tagowanymi na trunku, gdzie router przechwytuje zwykły DNS i blokuje DoT/DoH; za nimi QNAP NAS z maszyną AlmaLinux 9 na Dockerze — Caddy, Blocky DNS, Vaultwarden, Homepage oraz Prometheus z Grafaną — publikowane przez wychodzący tunel Cloudflare">
+      </button>
+    </section>
+
+    <section id="awarie" class="section wrap">
+      <h2>Siedem rzeczy, które się zepsuły</h2>
+      <p class="section-intro">
+        Każda z nich została zdiagnozowana od objawu, nie wyszukana w internecie. Tam,
+        gdzie awaria zmieniła sposób działania kodu, obok znajduje się zapis decyzji.
+      </p>
+
+      <ol class="incident-list">
+
+        <li class="incident">
+          <p class="layer-badge badge-network">Warstwa sieciowa</p>
+          <h3 class="incident-title">Czysty test, który niczego nie dowiódł</h3>
+          <p class="incident-desc">
+            W momencie włączenia <code>vlan-filtering</code> na RB5009 wszystkie porty
+            dostępowe zachowały link i straciły całą łączność warstwy trzeciej. Mostek
+            z filtrowaniem VLAN traktuje sam siebie jako port — port CPU — a adres bramy
+            siedzi bezpośrednio na mostku, nietagowany. Wpisanie mostka jako
+            <code>tagged</code> dla tego VLAN-u mówi mu, żeby oczekiwał ramek 802.1Q,
+            które nigdy nie przychodzą. Reguła, którą z tego wyciągnąłem: przynależność
+            mostka wynika z tego, skąd osiągany jest adres danego VLAN-u, a nie
+            z założenia, że CPU potrzebuje każdego VLAN-u.
+          </p>
+          <p class="incident-desc">
+            Warta zapamiętania jest przyczyna, dla której próba tego nie złapała. Ścieżka
+            zarządzania maszyny testowej leży poza mostkiem celowo — to właśnie czyni
+            zawieszoną maszynę odzyskiwalną. Uczynienie testu zdolnym do wykrycia tego
+            błędu kosztowałoby próbę jej siatkę bezpieczeństwa. Kontrola przeniosła się
+            więc na przegląd tablicy na sprzęcie względem trzech jawnych przypadków,
+            zamiast udawania, że zielony przebieg coś znaczył.
+          </p>
+          <div class="evidence-links">
+            <a href="https://github.com/KrzysztofKaletkaDev/ansible-network-template/blob/main/docs/adr/0010-bridge-vlan-membership-follows-the-l3-attachment-point.md">ADR-0010</a>
+            <a href="https://github.com/KrzysztofKaletkaDev/ansible-network-template/tree/main/roles/routeros_interfaces">routeros_interfaces</a>
+          </div>
+        </li>
+
+        <li class="incident">
+          <p class="layer-badge badge-network">Warstwa sieciowa</p>
+          <h3 class="incident-title">Zmiana trasy stworzyła drugą trasę</h3>
+          <p class="incident-desc">
+            Zmiana bramy domyślnej switcha dodała trasę zamiast zmodyfikować istniejącą,
+            zostawiając dwie. RouterOS wystawia <code>ip route</code> i <code>ip firewall
+            mangle</code> bez klucza głównego, więc moduł nie ma po czym dopasować
+            istniejącego wpisu. Oczywiste rozwiązanie — pozwolić Ansible przejąć całą
+            ścieżkę i kasować wszystko, czego nie ma na liście — usunęłoby wpisy, do
+            których rola nie ma prawa. Zamiast tego każdy zarządzany wpis nosi komentarz
+            <code>ansible:&lt;cel&gt;</code>, a parowany task sprzątający usuwa
+            nieaktualny dopiero po tym, jak zastępczy jest już na miejscu.
+          </p>
+          <div class="evidence-links">
+            <a href="https://github.com/KrzysztofKaletkaDev/ansible-network-template/blob/main/docs/adr/0009-comment-anchored-entries-on-pk-less-paths.md">ADR-0009</a>
+            <a href="https://github.com/KrzysztofKaletkaDev/ansible-network-template/tree/main/roles/routeros_switch">routeros_switch</a>
+          </div>
+        </li>
+
+        <li class="incident">
+          <p class="layer-badge badge-network">Warstwa sieciowa</p>
+          <h3 class="incident-title">Switch nieosiągalny przez własny trunk</h3>
+          <p class="incident-desc">
+            CRS310 nie dawał się osiągnąć z routera przy pierwszym przebiegu
+            konfiguracji. VLAN 1 jest tagowany na trunku między urządzeniami, a switch
+            w ustawieniach fabrycznych mówi wyłącznie ramkami nietagowanymi — więc link
+            był podniesiony, a urządzenie milczało. Trzeba go zbootstrapować kablem
+            prosto do laptopa i dopiero potem wstawić na miejsce. Zapisane
+            w dokumentacji bootstrapu, a nie w pamięci, bo świeże wdrożenie natrafi na to
+            ponownie.
+          </p>
+          <div class="evidence-links">
+            <a href="https://github.com/KrzysztofKaletkaDev/ansible-network-template/tree/main/docs/bootstrap">Dokumentacja bootstrapu</a>
+            <a href="https://github.com/KrzysztofKaletkaDev/ansible-network-template/tree/main/roles/routeros_switch">routeros_switch</a>
+          </div>
+        </li>
+
+        <li class="incident">
+          <p class="layer-badge badge-services">Warstwa usług</p>
+          <h3 class="incident-title">Metryki, które kłamały z pełnym przekonaniem</h3>
+          <p class="incident-desc">
+            Panel sieciowy w Grafanie pokazywał wiarygodne liczby, które nie zgadzały się
+            z rzeczywistością. <code>node_exporter</code> uruchomiony bez
+            <code>network_mode: host</code> widzi wyłącznie interfejsy własnego
+            namespace'u kontenera, a zamontowanie <code>/proc</code> hosta tego nie
+            naprawia — <code>/proc/net</code> jest per-namespace, nie per-mount.
+            Zdiagnozowane przez porównanie eksportowanych metryk z zawartością
+            <code>/proc/net/dev</code> bezpośrednio na hoście. Zamiast zostawić panel,
+            który wyglądał poprawnie i taki nie był, panel został usunięty; metryki CPU,
+            pamięci i dysku są dokładne i zostały.
+          </p>
+          <button type="button" class="image-trigger"
+                  data-lightbox-src="/images/grafana-dashboard.png"
+                  data-lightbox-alt="Dashboard Grafany dla hosta homelabu z pięcioma panelami node_exportera: zużycie CPU, zużycie pamięci, zajętość głównego systemu plików, obciążenie systemu z jednej minuty oraz wolne miejsce na głównym systemie plików. Nie ma panelu sieciowego — został usunięty, gdy okazało się, że raportuje namespace własnego kontenera zamiast hosta.">
+            <img class="diagram-image" src="/images/grafana-dashboard.png"
+                 alt="Dashboard Grafany dla hosta homelabu z pięcioma panelami node_exportera: zużycie CPU, zużycie pamięci, zajętość głównego systemu plików, obciążenie systemu z jednej minuty oraz wolne miejsce na głównym systemie plików. Nie ma panelu sieciowego — został usunięty, gdy okazało się, że raportuje namespace własnego kontenera zamiast hosta.">
+          </button>
+          <div class="evidence-links">
+            <a href="https://github.com/KrzysztofKaletkaDev/ansible-homelab-template/tree/main/roles/monitoring">rola monitoringu</a>
+          </div>
+        </li>
+
+        <li class="incident">
+          <p class="layer-badge badge-services">Warstwa usług</p>
+          <h3 class="incident-title">Dwa sposoby, na jakie kontener czyta przeszłość</h3>
+          <p class="incident-desc">
+            Przebudowa obrazu pod niezmienionym tagiem zostawia działający kontener
+            wskazujący na sumę kontrolną, która już nie istnieje, a Compose przy
+            najbliższym odświeżeniu wywala się błędem <em>No such image</em>. Osobno:
+            pojedynczy plik zamontowany do kontenera wiąże się z jednym inode'em
+            w chwili startu — a edytory zapisujące przez utworzenie zamiennika, w tym
+            <code>nano</code> i <code>sed</code>, tworzą nowy inode, więc kontener dalej
+            czyta osierocony oryginał, mimo że na dysku widać już nową treść.
+          </p>
+          <p class="incident-desc">
+            Oba objawiają się jak problemy z konfiguracją i żaden nim nie jest. Oba
+            wymagają odtworzenia kontenera, nie restartu — różnica niewidoczna, dopóki
+            nie kosztuje godziny.
+          </p>
+          <div class="evidence-links">
+            <a href="https://github.com/KrzysztofKaletkaDev/ansible-homelab-template/tree/main/roles/cloudflared">rola cloudflared</a>
+            <a href="https://github.com/KrzysztofKaletkaDev/ansible-homelab-template/tree/main/roles/caddy">rola caddy</a>
+          </div>
+        </li>
+
+        <li class="incident">
+          <p class="layer-badge badge-services">Warstwa usług</p>
+          <h3 class="incident-title">Kontener monitorujący, który nic nie monitorował</h3>
+          <p class="incident-desc">
+            cAdvisor startował czysto, raportował, że jest zdrowy, i nie widział ani
+            jednego kontenera. Wersje poniżej v0.54.0 nie rozumieją, jak
+            containerd-snapshotter przechowuje warstwy kontenerów. Aktualizacja miała
+            własną pułapkę: rejestr obrazu przeniósł się z <code>gcr.io</code> na
+            <code>ghcr.io</code> przy v0.53.0, więc podbicie samego tagu bez zmiany
+            rejestru kończy się błędem pobierania. Wersja i rejestr są dziś przypięte
+            razem, z komentarzem w roli tłumaczącym, dlaczego żadnego nie wolno zmieniać
+            osobno.
+          </p>
+          <div class="evidence-links">
+            <a href="https://github.com/KrzysztofKaletkaDev/ansible-homelab-template/tree/main/roles/monitoring">rola monitoringu</a>
+          </div>
+        </li>
+
+        <li class="incident">
+          <p class="layer-badge badge-site">Ta strona</p>
+          <h3 class="incident-title">Rekord DNS utworzony o jeden krok za wcześnie</h3>
+          <p class="incident-desc">
+            Przegląd tej strony ujawnił, że <code>www.kaletkadev.com</code> nie miało
+            rekordu DNS w ogóle. Utworzyłem go, zanim tunel dostał pasującą regułę
+            ingress — w złej kolejności. Negatywne cache'owanie ukrywało błąd przez
+            trzydzieści minut, po czym nazwa zaczęła się rozwiązywać i zwracać 404, aż do
+            wdrożenia konfiguracji. Samodzielnie stworzone okno awarii, niewielkie
+            i całkowicie do uniknięcia: najpierw backend przyjmuje ruch, potem kierujesz
+            na niego ruch.
+          </p>
+          <div class="evidence-links">
+            <a href="https://github.com/KrzysztofKaletkaDev/ansible-homelab-template/blob/main/docs/adr/0009-www-to-apex-redirect-in-caddy.md">ADR-0009</a>
+            <a href="https://github.com/KrzysztofKaletkaDev/ansible-homelab-template/tree/main/roles/cloudflared">rola cloudflared</a>
+          </div>
+        </li>
+
+      </ol>
+    </section>
+
+    <section id="decyzje" class="section wrap">
+      <h2>Decyzje i to, ile każda kosztowała</h2>
+      <p class="section-intro">
+        Dwadzieścia zapisów decyzji w obu repozytoriach. Każdy nazywa opcję wybraną,
+        opcje odrzucone i konsekwencje — łącznie z tymi niewygodnymi. Sześć
+        ciekawszych poniżej.
+      </p>
+
+      <div class="adr-table-wrap">
+        <table class="adr-table">
+          <caption class="visually-hidden">Wybrane zapisy decyzji architektonicznych wraz z ich kosztami</caption>
+          <thead>
+            <tr>
+              <th scope="col">Decyzja</th>
+              <th scope="col">Co kosztowała</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <th scope="row">
+                <a href="https://github.com/KrzysztofKaletkaDev/ansible-network-template/blob/main/docs/adr/0001-separate-repository-for-network-layer.md">Warstwa sieciowa we własnym repozytorium</a>
+                <span class="layer-badge badge-network">Sieć</span>
+              </th>
+              <td>Dwa repozytoria do utrzymania w spójności i wspólne fakty o tym samym domu żyjące w dwóch miejscach.</td>
+            </tr>
+            <tr>
+              <th scope="row">
+                <a href="https://github.com/KrzysztofKaletkaDev/ansible-network-template/blob/main/docs/adr/0002-routeros-api-modules-over-network-cli.md">API RouterOS zamiast network_cli</a>
+                <span class="layer-badge badge-network">Sieć</span>
+              </th>
+              <td>Dodatkowa zależność Pythona na kontrolerze i minimalna wersja kolekcji, której pakiety dystrybucyjne nie spełniają.</td>
+            </tr>
+            <tr>
+              <th scope="row">
+                <a href="https://github.com/KrzysztofKaletkaDev/ansible-network-template/blob/main/docs/adr/0006-server-vlan-segmentation.md">VLAN serwerowy, default-deny tylko w jedną stronę</a>
+                <span class="layer-badge badge-network">Sieć</span>
+              </th>
+              <td>Asymetria z założenia: segment serwerowy sięga do głównego swobodnie, bo rejestrator wideo sam wybiera połączenia do kamer. Nazwane, nie ukryte.</td>
+            </tr>
+            <tr>
+              <th scope="row">
+                <a href="https://github.com/KrzysztofKaletkaDev/ansible-network-template/blob/main/docs/adr/0005-chr-test-vm-via-shell-script-over-vagrant.md">Skrypt powłoki na maszynę testową zamiast narzędzia IaC</a>
+                <span class="layer-badge badge-network">Sieć</span>
+              </th>
+              <td>Mniej eleganckie niż zadeklarowanie maszyny. Narzędzie było na tyle niestabilne, że elegancja kosztowałaby więcej, niż dawała.</td>
+            </tr>
+            <tr>
+              <th scope="row">
+                <a href="https://github.com/KrzysztofKaletkaDev/ansible-homelab-template/blob/main/docs/adr/0001-cloudflare-tunnel-over-port-forwarding.md">Cloudflare Tunnel zamiast przekierowania portów</a>
+                <span class="layer-badge badge-services">Usługi</span>
+              </th>
+              <td>Dostępność zależy teraz od infrastruktury zewnętrznej firmy, a cały ruch jest dla niej widoczny w tranzycie. Przyjęte, by nie wystawiać magazynu haseł do publicznego internetu.</td>
+            </tr>
+            <tr>
+              <th scope="row">
+                <a href="https://github.com/KrzysztofKaletkaDev/ansible-homelab-template/blob/main/docs/adr/0010-security-headers-scoped-to-static-site.md">Nagłówki bezpieczeństwa zawężone do jednego handlera</a>
+                <span class="layer-badge badge-services">Usługi</span>
+              </th>
+              <td>Restrykcyjna polityka nałożona na całą domenę rozwaliłaby Grafanę i menedżer haseł. Węższy zakres oznacza, że każda nowa usługa publiczna wymaga własnej decyzji.</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="evidence-links">
+        <a href="https://github.com/KrzysztofKaletkaDev/ansible-network-template/tree/main/docs/adr">Wszystkie decyzje sieciowe</a>
+        <a href="https://github.com/KrzysztofKaletkaDev/ansible-homelab-template/tree/main/docs/adr">Wszystkie decyzje usługowe</a>
+      </div>
+    </section>
+
+    <section id="praktyka" class="section wrap">
+      <h2>Jak powstaje ta praca</h2>
+
+      <div class="section-grid">
+        <div>
+          <h3>Bramki przed produkcją</h3>
+          <p>
+            Zmiana nie jest skończona, kiedy działa. Trzeci przebieg Ansible z rzędu musi
+            zwrócić <code>changed=0</code> — inaczej rola nie jest idempotentna i zmiana
+            nie wchodzi. Każdy pull request uruchamia ansible-lint, yamllint i sprawdzenie
+            składni playbooka. Role przechodzą próbę na jednorazowej maszynie wirtualnej
+            — RouterOS CHR dla sieci, Vagrant dla usług — zanim cokolwiek dotknie sprzętu.
+          </p>
+
+          <h3>Praca na routerze bez konsoli</h3>
+          <p>
+            Żadne z urządzeń MikroTik nie ma konsoli szeregowej, więc zła zmiana
+            w firewallu lub VLAN-ach oznacza reset do ustawień fabrycznych i przekładanie
+            kabli. Każdy taki przebieg chronią trzy warstwy: zaplanowany rollback
+            uzbrojony przed zmianą i rozbrajany dopiero po potwierdzeniu łączności,
+            otwarta obok sesja RouterOS Safe Mode oraz port zarządzania świadomie trzymany
+            poza mostkiem, dopóki nowa ścieżka nie jest sprawdzona. Dwa lockouty jednego
+            dnia to sygnał, żeby skończyć na dziś, a nie przeć dalej.
+          </p>
+
+          <h3>Sekrety</h3>
+          <p>
+            Zmienne szyfrowane Vaultem, szablony <code>.example</code> jako jedyna
+            commitowana konfiguracja i <code>0600</code> na każdym generowanym pliku
+            zawierającym poświadczenie. Ta ostatnia zasada istnieje, bo raz plik powstał
+            z prawami do odczytu dla wszystkich — dziś jest wymuszona i zapisana w pliku
+            kontekstowym repozytorium, żeby wymuszona została.
+          </p>
+        </div>
+
+        <div>
+          <h3>Gdzie jest miejsce dla AI, a gdzie go nie ma</h3>
+          <p>
+            Oba repozytoria noszą plik kontekstowy <code>CLAUDE.md</code>, który ogranicza
+            pracę wspomaganą AI: nigdy nie commituj realnych sekretów, nigdy nie osłabiaj
+            reguły lintera, żeby hook przeszedł, respektuj kolejność ról, od której zależy
+            wdrożenie, i pamiętaj o pułapkach, w które ten kod już raz wpadł. Wygenerowane
+            zmiany przechodzą to samo review, to samo CI i tę samą maszynę testową co
+            wszystko inne. Ciekawe są tu bariery, nie generowanie.
+          </p>
+
+          <h3>Węzeł GPU, który wyłączyłem</h3>
+          <p>
+            Zbudowałem bezgłowy węzeł wokół RTX 5070 podłączonego przez OCuLink
+            i uruchamiałem na nim lokalne modele językowe, żeby sprawdzić, co ten sprzęt
+            faktycznie potrafi. Jest odstawiony. Węzeł stał bezczynnie niemal cały czas,
+            a bezczynny sprzęt nie uzasadnia ani poboru prądu, ani powierzchni
+            utrzymaniowej, którą dokłada. Wolałbym być oceniany po tym, że wiem, kiedy
+            coś wyłączyć.
+          </p>
+        </div>
+      </div>
+    </section>
+
+    <section id="ta-strona" class="section wrap section-narrow">
+      <h2>Ta strona jest częścią systemu</h2>
+      <p>
+        To, co czytasz, jest serwowane przez opisaną wyżej instancję Caddy, z tej samej
+        maszyny AlmaLinux, przez ten sam tunel — bez ani jednego otwartego portu
+        przychodzącego. To osobne publiczne repozytorium, wdrażane tym samym przebiegiem
+        playbooka co wszystko inne.
+      </p>
+      <p>
+        Jest też traktowana jak produkcja. Review od seniora ujawniło brakujący rekord
+        <code>www</code> i brak nagłówków bezpieczeństwa; oba naprawione, oba w Git, oba
+        z zapisem decyzji tłumaczącym kompromisy — dlaczego HSTS nie trafia na listę
+        preload przeglądarek i dlaczego polityka treści obejmuje tę stronę, a nie całą
+        domenę.
+      </p>
+      <div class="evidence-links">
+        <a href="https://github.com/KrzysztofKaletkaDev/kaletkadev-portfolio-site">Repozytorium strony</a>
+        <a href="https://github.com/KrzysztofKaletkaDev/ansible-homelab-template/blob/main/docs/adr/0010-security-headers-scoped-to-static-site.md">Decyzja o nagłówkach</a>
+        <a href="https://github.com/KrzysztofKaletkaDev/ansible-homelab-template/blob/main/docs/adr/0003-caddy-file-server-for-static-site.md">Dlaczego serwuje ją Caddy</a>
+      </div>
+    </section>
+
+    <section id="kontakt" class="section wrap section-narrow">
+      <h2>Kontakt</h2>
+      <p>
+        Szukam juniorskiej roli w Linuksie, infrastrukturze lub platformie. Dostępny od
+        zaraz, pełny etat, Nysa lub zdalnie.
+      </p>
+      <div class="contact-row">
+        <a class="btn btn-primary" href="mailto:krzysztof@kaletkadev.com">krzysztof@kaletkadev.com</a>
+        <a class="btn btn-ghost" href="/cv.pdf" download>Pobierz CV</a>
+        <a class="btn btn-ghost" href="https://github.com/KrzysztofKaletkaDev">GitHub</a>
+      </div>
+    </section>
+
+  </main>
+
+  <footer class="site-footer">
+    <div class="wrap">
+      <p class="term-muted">
+        kaletkadev.com © 2026 · <a href="/" hreflang="en" lang="en">English version</a>
+      </p>
+    </div>
+  </footer>
+
+  <dialog id="lightbox" class="lightbox">
+    <button type="button" class="lightbox-close" aria-label="Zamknij powiększenie">✕</button>
+    <img id="lightbox-img" src="" alt="">
+  </dialog>
+  <script src="/script.js" defer></script>
+</body>
+</html>
